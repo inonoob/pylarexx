@@ -66,6 +66,29 @@ class FileOutListener(DataListener):
                 signaltext = str(data['signal'])
             self.fd.write('%d,%d,%f %s,%d,%s,%s,%s\n' % (data['sensorid'],data['rawvalue'],data['sensor'].rawToCooked(data['rawvalue']),data['sensor'].unit,data['timestamp'],signaltext,data['sensor'].name,data['sensor'].type))
 
+            
+class Sqlite3Listener(DataListener):
+    '''
+    Listener that outputs into an sqlite database
+    '''
+    def __init__(self, params):
+        super().__init__(params)
+        self.filename = self.params.get('filename', '/tmp/pylarexx.db')
+
+    def onNewData(self, data):
+        conn = sqlite3.connect(self.filename)
+        curs = conn.cursor()
+
+        sqlTable = '''CREATE TABLE IF NOT EXISTS pylarexx (id INTEGER PRIMARY KEY, timestamp long, Location string, sensorid integer, SensorType string, SensorValue float, Unit string);'''
+        sqlValues ='''INSERT INTO pylarrex (timestamp, Location, sensorid, SensorType, SensorValue, Unit) VALUES (?,?,?,?,?,?);'''
+
+        data_tuple = (data['timestamp'], data['sensor'].name, data['sensorid'],data['sensor'].type,data['sensor'].rawToCooked(data['rawvalue']),data['sensor'].unit)
+
+        curs.execute(sqlTable)
+        curs.execute(sqlValues,data_tuple)
+        conn.commit()
+        conn.close()            
+               
 class RecentValuesListener(DataListener):
     '''
     Listener holds last value from each sensor. Listener can be queried over tcp
